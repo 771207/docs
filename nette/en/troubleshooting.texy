@@ -121,6 +121,68 @@ location / {
 
 The `location` block must appear only once for each filesystem path within the `server` block. If you already have a `location /` block in your configuration, add the `try_files` directive into the existing block.
 
+**IIS**: You need to enable and configure the URL Rewrite module. Create a `web.config` file in the `www/` directory (next to the `index.php` file):
+
+```iis
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <system.webServer>
+        <defaultDocument>
+            <files>
+                <clear />
+                <add value="index.php" />
+                <add value="Default.htm" />
+                <add value="Default.asp" />
+                <add value="index.htm" />
+                <add value="index.html" />
+                <add value="iisstart.htm" />
+            </files>
+        </defaultDocument>
+        <rewrite>
+            <rules>
+                <rule name="HTTPS Redirect" stopProcessing="true">
+                    <match url=".?" ignoreCase="false" />
+                    <conditions logicalGrouping="MatchAll">
+                        <add input="{HTTPS}" pattern="on" ignoreCase="false" negate="true" />
+                    </conditions>
+                    <action type="Redirect" url="https://{HTTP_HOST}{URL}" redirectType="Permanent" />
+                </rule>
+                <rule name="Well-known" stopProcessing="true">
+                    <match url="^\.well-known/.*" ignoreCase="false" />
+                    <action type="None" />
+                </rule>
+                <rule name="Security" stopProcessing="true">
+                    <match url="/\.|^\.|^wp-(login|admin|includes|content)" ignoreCase="false" />
+                    <action type="CustomResponse" statusCode="403" statusReason="Forbidden" statusDescription="Forbidden" />
+                </rule>
+                <rule name="Static files" stopProcessing="true">
+                    <match url="\.(pdf|js|mjs|ico|gif|jpg|jpeg|png|webp|avif|svg|css|rar|zip|7z|tar\.gz|map|eot|ttf|otf|woff|woff2)$" ignoreCase="false" />
+                    <conditions logicalGrouping="MatchAll">
+                        <add input="{REQUEST_FILENAME}" matchType="IsFile" ignoreCase="false" negate="true" />
+                    </conditions>
+                    <action type="None" />
+                </rule>
+                <rule name="RewriteToIndex" stopProcessing="true">
+                    <match url="." ignoreCase="false" />
+                    <conditions logicalGrouping="MatchAll">
+                        <add input="{REQUEST_FILENAME}" matchType="IsFile" ignoreCase="false" negate="true" />
+                        <add input="{REQUEST_FILENAME}" matchType="IsDirectory" ignoreCase="false" negate="true" />
+                    </conditions>
+                    <action type="Rewrite" url="index.php" />
+                </rule>
+            </rules>
+        </rewrite>
+    </system.webServer>
+</configuration>
+```
+
+If you encounter any issues, make sure that:
+
+- the `web.config` file is located in the root directory of the website (next to the `www/` folder)
+- the URL Rewrite module for IIS is installed (available from the Microsoft website or via Web Platform Installer)
+- the application pool has Managed Pipeline Mode set to Integrated
+- PHP is configured as a FastCGI handler in IIS
+
 
 Test If `.htaccess` Is Working
 ------------------------------
